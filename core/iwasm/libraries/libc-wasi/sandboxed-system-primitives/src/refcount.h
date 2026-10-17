@@ -21,7 +21,37 @@
 #define PRODUCES(...) LOCKS_SHARED(__VA_ARGS__) NO_LOCK_ANALYSIS
 #define CONSUMES(...) UNLOCKS(__VA_ARGS__) NO_LOCK_ANALYSIS
 
-#if CONFIG_HAS_STD_ATOMIC != 0
+#if defined(BH_ATOMIC_RMW_CSECTION)
+
+/* No exclusive accesses (bh_atomic.h): the platform's critical section */
+
+#include "bh_atomic.h"
+
+struct LOCKABLE refcount {
+    bh_atomic_32_t count;
+};
+
+static inline void
+refcount_init(struct refcount *r, unsigned int count) PRODUCES(*r)
+{
+    BH_ATOMIC_32_STORE(r->count, count);
+}
+
+static inline void
+refcount_acquire(struct refcount *r) PRODUCES(*r)
+{
+    BH_ATOMIC_32_FETCH_ADD(r->count, 1);
+}
+
+static inline bool
+refcount_release(struct refcount *r) CONSUMES(*r)
+{
+    int old = (int)BH_ATOMIC_32_FETCH_SUB(r->count, 1);
+    bh_assert(old != 0 && "Reference count becoming negative");
+    return old == 1;
+}
+
+#elif CONFIG_HAS_STD_ATOMIC != 0
 
 #include <stdatomic.h>
 

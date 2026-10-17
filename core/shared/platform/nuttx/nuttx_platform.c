@@ -22,6 +22,24 @@
 const char *g_wamr_text_section = ".text";
 #endif
 
+#include <nuttx/irq.h>
+
+/* bh_atomic.h's read-modify-writes, with BH_ATOMIC_RMW_CSECTION (memory
+ * without exclusive accesses: the RP2350's PSRAM)
+ */
+
+uint32
+os_atomic_cs_enter(void)
+{
+    return (uint32)enter_critical_section();
+}
+
+void
+os_atomic_cs_leave(uint32 flags)
+{
+    leave_critical_section((irqstate_t)flags);
+}
+
 int
 bh_platform_init()
 {

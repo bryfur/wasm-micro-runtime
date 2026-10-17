@@ -180,7 +180,39 @@ nonatomic_64_fetch_sub(bh_atomic_64_t *p, uint64 val)
 }
 #endif
 
-#if BH_ATOMIC_32_IS_ATOMIC != 0
+#if BH_ATOMIC_32_IS_ATOMIC != 0 && defined(BH_ATOMIC_RMW_CSECTION)
+
+/* Loads and stores are atomic, but read-modify-writes must not use the
+ * CPU's exclusive accesses (LDREX/STREX), which the memory the runtime
+ * allocates from may not support (a PSRAM behind a cache): they are done
+ * in the platform's critical section (os_atomic_cs_enter()/leave())
+ */
+
+uint32
+os_atomic_cs_enter(void);
+void
+os_atomic_cs_leave(uint32 flags);
+
+static inline uint32
+cs_32_rmw(volatile uint32 *p, uint32 val, int op)
+{
+    uint32 flags = os_atomic_cs_enter();
+    uint32 old = *p;
+
+    *p = op == 0 ? (old | val) : op == 1 ? (old & val) :
+         op == 2 ? (old + val) : (old - val);
+    os_atomic_cs_leave(flags);
+    return old;
+}
+
+#define BH_ATOMIC_32_LOAD(v) __atomic_load_n(&(v), __ATOMIC_SEQ_CST)
+#define BH_ATOMIC_32_STORE(v, val) __atomic_store_n(&(v), val, __ATOMIC_SEQ_CST)
+#define BH_ATOMIC_32_FETCH_OR(v, val) cs_32_rmw(&(v), (val), 0)
+#define BH_ATOMIC_32_FETCH_AND(v, val) cs_32_rmw(&(v), (val), 1)
+#define BH_ATOMIC_32_FETCH_ADD(v, val) cs_32_rmw(&(v), (val), 2)
+#define BH_ATOMIC_32_FETCH_SUB(v, val) cs_32_rmw(&(v), (val), 3)
+
+#elif BH_ATOMIC_32_IS_ATOMIC != 0
 
 #define BH_ATOMIC_32_LOAD(v) __atomic_load_n(&(v), __ATOMIC_SEQ_CST)
 #define BH_ATOMIC_32_STORE(v, val) __atomic_store_n(&(v), val, __ATOMIC_SEQ_CST)
