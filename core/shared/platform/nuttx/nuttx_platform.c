@@ -12,6 +12,16 @@
 
 #include <nuttx/cache.h>
 
+#if defined(CONFIG_ARCH_USE_TEXT_HEAP)
+/* The section name an AOT module's code is asked for under (a board with
+ * CONFIG_ARCH_USE_SEPARATED_SECTION may place its text heap's blocks by
+ * section name, e.g. fast ones in internal SRAM): the embedder may change
+ * it before loading a module
+ */
+
+const char *g_wamr_text_section = ".text";
+#endif
+
 int
 bh_platform_init()
 {
@@ -53,7 +63,11 @@ os_mmap(void *hint, size_t size, int prot, int flags, os_file_handle file)
 
 #if defined(CONFIG_ARCH_USE_TEXT_HEAP)
     if ((prot & MMAP_PROT_EXEC) != 0) {
+#if defined(CONFIG_ARCH_USE_SEPARATED_SECTION)
+        p = up_textheap_memalign(g_wamr_text_section, sizeof(void *), size);
+#else
         p = up_textheap_memalign(sizeof(void *), size);
+#endif
         if (p) {
 #if (WASM_MEM_DUAL_BUS_MIRROR != 0)
             void *dp = os_get_dbus_mirror(p);
