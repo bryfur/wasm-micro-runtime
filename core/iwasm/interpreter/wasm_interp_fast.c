@@ -7928,6 +7928,12 @@ wasm_interp_call_wasm(WASMModuleInstance *module_inst, WASMExecEnv *exec_env,
     }
 #endif
 
+    if (module_inst->e->ext_call && !function->is_import_func) {
+        /* The embedder's code (results in argv, or an exception) */
+        module_inst->e->ext_call(module_inst, exec_env, function, argc, argv);
+        return;
+    }
+
     if (!(frame =
               ALLOC_FRAME(exec_env, frame_size, (WASMInterpFrame *)prev_frame)))
         return;

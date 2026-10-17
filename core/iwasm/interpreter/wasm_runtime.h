@@ -389,6 +389,14 @@ typedef struct WASMModuleInstanceExtra {
         && WASM_ENABLE_LAZY_JIT != 0)
     WASMModuleInstance *next;
 #endif
+
+    /* An embedder's own code for the module's functions (fpcwasm's
+       JIT): when set, wasm_interp_call_wasm() hands a call of one of
+       them to it instead of interpreting it */
+    void (*ext_call)(WASMModuleInstance *module_inst, WASMExecEnv *exec_env,
+                     WASMFunctionInstance *function, uint32 argc,
+                     uint32 argv[]);
+    void *ext_data;
 } WASMModuleInstanceExtra;
 
 struct AOTFuncPerfProfInfo;
@@ -461,7 +469,10 @@ struct WASMModuleInstance {
 
     /* Default WASM operand stack size */
     uint32 default_wasm_stack_size;
-    uint32 reserved[7];
+    /* Words an embedder's own code generator keeps with the instance,
+       where its code reaches them (fpcwasm's JIT, which keeps the
+       instance in a register); zero otherwise */
+    uint32 ext_words[7];
 
     /*
      * +------------------------------+ <-- memories
