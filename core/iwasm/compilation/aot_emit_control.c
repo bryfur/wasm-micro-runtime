@@ -884,11 +884,9 @@ check_suspend_flags(AOTCompContext *comp_ctx, AOTFuncContext *func_ctx,
     bool is_shared_memory =
         comp_ctx->comp_data->memories[0].flags & 0x02 ? true : false;
 
-    /* Only need to check the suspend flags when memory is shared since
-       shared memory must be enabled for multi-threading */
-    if (!is_shared_memory) {
-        return true;
-    }
+    /* (Checked whatever the memory: an embedder terminates a single
+       thread too, a loop that never ends; the FPC's watchdog) */
+    (void)is_shared_memory;
 
     /* Offset of suspend_flags */
     offset = I32_FIVE;
