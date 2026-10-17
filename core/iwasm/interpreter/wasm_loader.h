@@ -51,6 +51,10 @@ wasm_loader_load_from_sections(WASMSection *section_list, char *error_buf,
 void
 wasm_loader_unload(WASMModule *module);
 
+/* Load the next modules without the fast interpreter's translation (an
+   embedder that runs their code itself) */
+extern bool wasm_loader_validate_only;
+
 /**
  * Find address of related else opcode and end opcode of opcode block/loop/if
  * according to the start address of opcode.

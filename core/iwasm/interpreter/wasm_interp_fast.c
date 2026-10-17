@@ -7934,6 +7934,12 @@ wasm_interp_call_wasm(WASMModuleInstance *module_inst, WASMExecEnv *exec_env,
         return;
     }
 
+    if (!function->is_import_func && !function->u.func->code_compiled) {
+        /* Loaded with wasm_loader_validate_only: nothing to interpret */
+        wasm_set_exception(module_inst, "the function was not translated");
+        return;
+    }
+
     if (!(frame =
               ALLOC_FRAME(exec_env, frame_size, (WASMInterpFrame *)prev_frame)))
         return;
