@@ -1492,6 +1492,13 @@ get_global_addr(uint8 *global_data, WASMGlobalInstance *global)
 #endif
 }
 
+/* The embedder may place the interpreter's loop in a section of its own
+ * (fast internal RAM, say): WASM_INTERP_SECTION, the section's name
+ */
+
+#ifdef WASM_INTERP_SECTION
+__attribute__((section(WASM_INTERP_SECTION)))
+#endif
 static void
 wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                                WASMExecEnv *exec_env,
