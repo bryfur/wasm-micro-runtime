@@ -679,6 +679,12 @@ os_readlinkat(os_file_handle handle, const char *path, char *buf,
     ssize_t len = readlinkat(handle, path, bufsize == 0 ? fakebuf : buf,
                              bufsize == 0 ? sizeof(fakebuf) : bufsize);
 
+#ifdef __NuttX__
+    /* A file system without links (FAT) answers ENOSYS: not a link */
+    if (len < 0 && errno == ENOSYS)
+        return __WASI_EINVAL;
+#endif
+
     if (len < 0)
         return convert_errno(errno);
 
