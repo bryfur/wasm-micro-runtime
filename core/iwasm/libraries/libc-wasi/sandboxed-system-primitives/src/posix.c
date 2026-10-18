@@ -632,6 +632,24 @@ fd_table_insert_existing(struct fd_table *ft, __wasi_fd_t in,
     return true;
 }
 
+// FPC: a descriptor's rights cut to those in base and inheriting (a
+// directory pre-opened read-only: nothing under it written, made, renamed
+// or removed)
+bool
+fd_table_restrict(struct fd_table *ft, __wasi_fd_t fd, __wasi_rights_t base,
+                  __wasi_rights_t inheriting)
+{
+    rwlock_wrlock(&ft->lock);
+    if (fd >= ft->size || ft->entries[fd].object == NULL) {
+        rwlock_unlock(&ft->lock);
+        return false;
+    }
+    ft->entries[fd].rights_base &= base;
+    ft->entries[fd].rights_inheriting &= inheriting;
+    rwlock_unlock(&ft->lock);
+    return true;
+}
+
 // Picks an unused slot from the file descriptor table.
 static __wasi_errno_t
 fd_table_unused(struct fd_table *ft, __wasi_fd_t *out) REQUIRES_SHARED(ft->lock)

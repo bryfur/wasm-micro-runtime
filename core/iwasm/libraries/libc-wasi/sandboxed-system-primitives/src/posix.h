@@ -63,6 +63,9 @@ bool
 fd_table_insert_existing(struct fd_table *, __wasi_fd_t, os_file_handle,
                          bool is_stdio);
 bool
+fd_table_restrict(struct fd_table *ft, __wasi_fd_t fd, __wasi_rights_t base,
+                  __wasi_rights_t inheriting);
+bool
 fd_prestats_init(struct fd_prestats *);
 bool
 fd_prestats_insert(struct fd_prestats *, const char *, __wasi_fd_t);

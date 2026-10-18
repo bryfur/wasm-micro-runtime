@@ -3747,6 +3747,16 @@ wasm_runtime_init_wasi(WASMModuleInstanceCommon *module_inst,
             map_host = delim_pos + strlen(delim);
         }
 
+        /* FPC: "guest::host::ro" pre-opens host read-only */
+        bool map_ro = false;
+        if (map_host) {
+            size_t hl = strlen(map_host);
+            if (hl > 4 && strcmp(map_host + hl - 4, "::ro") == 0) {
+                map_host[hl - 4] = '\0';
+                map_ro = true;
+            }
+        }
+
         if (!map_mapped || !map_host) {
             if (error_buf)
                 snprintf(error_buf, error_buf_size,
@@ -3780,7 +3790,40 @@ wasm_runtime_init_wasi(WASMModuleInstanceCommon *module_inst,
         }
 
         if (!fd_table_insert_existing(curfds, wasm_fd, file_handle, false)
-            || !fd_prestats_insert(prestats, map_mapped, wasm_fd)) {
+            || !fd_prestats_insert(prestats, map_mapped, wasm_fd)
+            || (map_ro
+                && !fd_table_restrict(
+                    curfds, wasm_fd,
+                    ~(__WASI_RIGHT_FD_DATASYNC | __WASI_RIGHT_FD_WRITE
+                      | __WASI_RIGHT_FD_ALLOCATE | __WASI_RIGHT_FD_SYNC
+                      | __WASI_RIGHT_PATH_CREATE_DIRECTORY
+                      | __WASI_RIGHT_PATH_CREATE_FILE
+                      | __WASI_RIGHT_PATH_LINK_SOURCE
+                      | __WASI_RIGHT_PATH_LINK_TARGET
+                      | __WASI_RIGHT_PATH_RENAME_SOURCE
+                      | __WASI_RIGHT_PATH_RENAME_TARGET
+                      | __WASI_RIGHT_PATH_FILESTAT_SET_SIZE
+                      | __WASI_RIGHT_PATH_FILESTAT_SET_TIMES
+                      | __WASI_RIGHT_FD_FILESTAT_SET_SIZE
+                      | __WASI_RIGHT_FD_FILESTAT_SET_TIMES
+                      | __WASI_RIGHT_PATH_SYMLINK
+                      | __WASI_RIGHT_PATH_REMOVE_DIRECTORY
+                      | __WASI_RIGHT_PATH_UNLINK_FILE),
+                    ~(__WASI_RIGHT_FD_DATASYNC | __WASI_RIGHT_FD_WRITE
+                      | __WASI_RIGHT_FD_ALLOCATE | __WASI_RIGHT_FD_SYNC
+                      | __WASI_RIGHT_PATH_CREATE_DIRECTORY
+                      | __WASI_RIGHT_PATH_CREATE_FILE
+                      | __WASI_RIGHT_PATH_LINK_SOURCE
+                      | __WASI_RIGHT_PATH_LINK_TARGET
+                      | __WASI_RIGHT_PATH_RENAME_SOURCE
+                      | __WASI_RIGHT_PATH_RENAME_TARGET
+                      | __WASI_RIGHT_PATH_FILESTAT_SET_SIZE
+                      | __WASI_RIGHT_PATH_FILESTAT_SET_TIMES
+                      | __WASI_RIGHT_FD_FILESTAT_SET_SIZE
+                      | __WASI_RIGHT_FD_FILESTAT_SET_TIMES
+                      | __WASI_RIGHT_PATH_SYMLINK
+                      | __WASI_RIGHT_PATH_REMOVE_DIRECTORY
+                      | __WASI_RIGHT_PATH_UNLINK_FILE)))) {
             if (error_buf)
                 snprintf(error_buf, error_buf_size,
                          "error while pre-opening mapped directory %s: "
