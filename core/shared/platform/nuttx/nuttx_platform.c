@@ -7,7 +7,13 @@
 #include "platform_api_vmcore.h"
 
 #if defined(CONFIG_ARCH_USE_TEXT_HEAP)
+#ifdef WAMR_FPC_SDK
+/* Built as a program against the FPC's SDK (its programs/wasm): the text
+ * heap's calls are its fpc/native/code.h's */
+#include <fpc/native/code.h>
+#else
 #include <nuttx/arch.h>
+#endif
 #endif
 
 #include <nuttx/cache.h>
