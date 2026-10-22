@@ -16,7 +16,9 @@
 #endif
 #endif
 
+#ifndef WAMR_FPC_SDK
 #include <nuttx/cache.h>
+#endif
 
 #if defined(CONFIG_ARCH_USE_TEXT_HEAP)
 /* The section name an AOT module's code is asked for under (a board with
@@ -28,11 +30,12 @@
 const char *g_wamr_text_section = ".text";
 #endif
 
-#include <nuttx/irq.h>
-
 /* bh_atomic.h's read-modify-writes, with BH_ATOMIC_RMW_CSECTION (memory
- * without exclusive accesses: the RP2350's PSRAM)
+ * without exclusive accesses: the RP2350's PSRAM); only then
  */
+
+#ifdef BH_ATOMIC_RMW_CSECTION
+#include <nuttx/irq.h>
 
 uint32
 os_atomic_cs_enter(void)
@@ -45,6 +48,7 @@ os_atomic_cs_leave(uint32 flags)
 {
     leave_critical_section((irqstate_t)flags);
 }
+#endif
 
 int
 bh_platform_init()
@@ -87,7 +91,8 @@ os_mmap(void *hint, size_t size, int prot, int flags, os_file_handle file)
 
 #if defined(CONFIG_ARCH_USE_TEXT_HEAP)
     if ((prot & MMAP_PROT_EXEC) != 0) {
-#if defined(CONFIG_ARCH_USE_SEPARATED_SECTION)
+#if defined(CONFIG_ARCH_USE_SEPARATED_SECTION) || defined(WAMR_FPC_SDK)
+        /* (the SDK's is always by section name: fpc/native/code.h) */
         p = up_textheap_memalign(g_wamr_text_section, sizeof(void *), size);
 #else
         p = up_textheap_memalign(sizeof(void *), size);
@@ -151,6 +156,9 @@ os_mprotect(void *addr, size_t size, int prot)
 void
 os_dcache_flush()
 {
+#ifdef WAMR_FPC_SDK
+    /* (the SDK's fpc_code_sync(), per range: os_icache_flush) */
+#else
 #if defined(CONFIG_ARCH_USE_TEXT_HEAP) \
     && defined(CONFIG_ARCH_HAVE_TEXT_HEAP_SEPARATE_DATA_ADDRESS)
     up_textheap_data_sync();
@@ -158,12 +166,16 @@ os_dcache_flush()
 #ifndef CONFIG_BUILD_KERNEL
     up_flush_dcache_all();
 #endif
+#endif
 }
 
 void
 os_icache_flush(void *start, size_t len)
 {
-#ifndef CONFIG_BUILD_KERNEL
+#ifdef WAMR_FPC_SDK
+    /* the code made runnable as the SDK says (fpc/native/code.h) */
+    fpc_code_sync(start, len);
+#elif !defined(CONFIG_BUILD_KERNEL)
     up_invalidate_icache((uintptr_t)start, (uintptr_t)start + len);
 #endif
 }
